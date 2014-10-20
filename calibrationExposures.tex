@@ -1,0 +1,212 @@
+%
+% This file contains details of how many exposures we need to establish and maintain calibration
+% products for the main telescope
+%
+\section{Proposed Calibration Exposures}
+
+\begingroup                             % macros
+\newcommand{\DspotProjector}{D_{\mbox{\tiny spot}}} % Diameter of spot projector
+\newcommand{\OverfillFactor}{f_D}                   % factor by which we exceed 1.8m/\DspotProjector
+\newcommand{\DlambdaFilter}{\Delta_\lambda}         % step in lambda for spots when a filter is in the beam
+\newcommand{\DlambdaFlat}{\Delta_{\lambda,\mbox{\tiny flat}}}   % step in lambda for flats (no filter)
+\newcommand{\DlambdaOffset}{\Delta_{\lambda,\mbox{\tiny hole}}} % step in lambda for spots when measuring hole sizes
+\newcommand{\DlambdaWhite}{\Delta_{\lambda,\mbox{\tiny white}}} % step in lambda without a filter
+\newcommand{\Nband}{N_b}                                        % number of filters
+\newcommand{\NPointPerFilter}{N_{\lambda/\mbox{\tiny filter}}}  % number of samples/filter
+\newcommand{\NspotCCD}{N_{\mbox{\tiny CCD}}}                    % number of spots per CCD
+\newcommand{\Noffset}{N_{\mbox{\tiny offset}}}                  % number of offsets to solve for hole sizes
+\newcommand{\NFlat}{N_{\mbox{\tiny flat}}}                      % number of exposures per flat
+\newcommand{\Tdark}{t_{\mbox{\tiny dark}}}                      % elapsed time per set of dark data
+\newcommand{\Tflat}{t_{\mbox{\tiny flat}}}                      % elapsed time per set of flat data
+\newcommand{\Tspot}{t_{\mbox{\tiny spot}}}                      % elapsed time per set of spot data
+\newcommand{\FracBandwidth}{f_{\mbox{\tiny bandwidth}}}         % fraction of total bandwith scanned per filter
+
+\newcommand{\DspotProjectorNominal}{0.3\mbox{m}}
+\newcommand{\OverfillFactorNominal}{2}
+\newcommand{\DlambdaFilterNominal}{1\mbox{\tiny nm}}
+\newcommand{\DlambdaFlatNominal}{100\mbox{\tiny nm}}
+\newcommand{\DlambdaOffsetNominal}{100\mbox{\tiny nm}}
+\newcommand{\DlambdaWhiteNominal}{10\mbox{\tiny nm}}
+\newcommand{\NbandNominal}{6}
+\newcommand{\NPointPerFilterNominal}{2}
+\newcommand{\NspotCCDNominal}{5}
+\newcommand{\NoffsetNominal}{9}         % not 10 as we can reuse one of the NspotCCD
+\newcommand{\NFlatNominal}{10}
+\newcommand{\TdarkNominal}{1000\mbox{\tiny s}}
+\newcommand{\TflatNominal}{13\mbox{\tiny s}}
+\newcommand{\TspotNominal}{45\mbox{\tiny s}}
+\newcommand{\FracBandwidthNominal}{0.5}
+
+\newcommand{\dspotProjector}{\left(\frac{\DspotProjector}{\DspotProjectorNominal}\right)}
+\newcommand{\overfillFactor}{\left(\frac{\OverfillFactor}{\OverfillFactorNominal}\right)}
+\newcommand{\dlambdaFilter}{\left(\frac{\DlambdaFilter}{\DlambdaFilterNominal}\right)}
+\newcommand{\dlambdaFlat}{\left(\frac{\DlambdaFlat}{\DlambdaFlatNominal}\right)}
+\newcommand{\dlambdaOffset}{\left(\frac{\DlambdaOffset}{\DlambdaOffsetNominal}\right)}
+\newcommand{\dlambdaWhite}{\left(\frac{\DlambdaWhite}{\DlambdaWhiteNominal}\right)}
+\newcommand{\nband}{\left(\frac{\Nband}{\NbandNominal}\right)}
+\newcommand{\nPointPerFilter}{\left(\frac{\NPointPerFilter}{\NPointPerFilterNominal}\right)}
+\newcommand{\nspotCCD}{\left(\frac{\NspotCCD}{\NspotCCDNominal}\right)}
+\newcommand{\noffset}{\left(\frac{\Noffset}{\NoffsetNominal}\right)}
+\newcommand{\nFlat}{\left(\frac{\NFlat}{\NFlatNominal}\right)}
+\newcommand{\tdark}{\left(\frac{\Tdark}{\TdarkNominal}\right)}
+\newcommand{\tflat}{\left(\frac{\Tflat}{\TflatNominal}\right)}
+\newcommand{\tspot}{\left(\frac{\Tspot}{\TspotNominal}\right)}
+\newcommand{\fracBandwidth}{\left(\frac{\FracBandwidth}{\FracBandwidthNominal}\right)}
+
+\begin{table}
+\begin{center}
+  \begin{tabular}{lllp{4cm}}
+    What & Symbol & Nominal & Notes \\
+    \hline
+    Radial extent of M1 & & 1.8m & $4.2m - 2.4m$ \\
+    Number of bands & $\Nband$ & $\NbandNominal$ \\
+    Total LSST bandwidth  & & 700nm & \\
+    \noalign{\medskip}
+    Fraction of bandwidth scanned for each filter & $\FracBandwidth$ & $\FracBandwidthNominal$ \\
+    Diameter of spot projector & $\DspotProjector$ & $\DspotProjectorNominal$ \\
+    Oversampling of M1 & $\OverfillFactor$ & $\OverfillFactorNominal$ & $\OverfillFactor = 88$ to tile M1 \\
+    Step in $\lambda$ for spots (with a filter) & $\DlambdaFilter$ & $\DlambdaFilterNominal$ \\
+    Step in $\lambda$ for spots (without a filter) & $\DlambdaWhite$ & $\DlambdaWhiteNominal$ \\
+    Step in $\lambda$ when measuring mask throughput & $\DlambdaOffset$ & $\DlambdaOffsetNominal$ \\
+    Step in $\lambda$ for flats (without a filter) & $\DlambdaFlat$ & $\DlambdaFlatNominal$ \\
+    Number of spots per CCD & $\NspotCCD$ & $\NspotCCDNominal$ \\
+    Number of offsets to solve for hole sizes & $\Noffset$ & $\NoffsetNominal$ & can use one of spectral scans; total 10 \\
+    Number of samples/filter for contamination check & $\NPointPerFilter$ & $\NPointPerFilterNominal$ \\
+    Number of exposures per flat & $\NFlat$ & $\NFlatNominal$ & per-pixel S/N $\sim$ 1000 \\
+    Elapsed time per set of flat data & $\Tflat$ & $\TflatNominal$ & 10s exposure \\
+    Elapsed time per set of spot data & $\Tspot$ & $\TspotNominal$ &
+    Assume 4s overhead, 15s exposure, and \c 26s overhead to move telescope/projector \\
+  \end{tabular}
+  \caption{
+    Parameters involved in defining calibration sequences
+  }
+  \label{tab:CalibrationParams}
+\end{center}
+\end{table}
+
+Nominal values for parameters such as the spot projector diameter, wavelength steps, and exposure
+times are given in Table \ref{tab:CalibrationParams}.
+
+Let us initially assume that at all times we know the filter bandpasses $\qe_b(\lambda, \xb)$
+as a function of position on the filter and wavelength.  We'll consider whether we will be able
+to measure the bandpasses using the flat fields and spot projector in Section \ref{sec:MeasureFilters}.
+
+%------------------------------------------------------------------------------
+%
+% This file is created by running the exposureTable.ipynb notebook
+%
+\import{.}{exposureTable}
+
+%------------------------------------------------------------------------------
+
+\subsection{Required Number of Exposures}
+
+The number of exposures and elapsed time resulting from the considerations in this section are given in Table
+\ref{tab:NExposure}; each of these exposures will result in a full camera read (6.4 Gby uncompressed).
+
+We need 6 $\dspotProjector$ exposures to synthesize the full angular distribution of rays traversing the
+system using minimal overlaps on M1; let as adopt a number 6$\OverfillFactor$ with a nominal value
+$\OverfillFactor = 2$.  The
+spots on M1 should be placed at a range of azimuthal angles, and that we will monitor the sensitivity
+of derived calibration products to the positions of the spots, increasing $\OverfillFactor$ as appropriate.
+
+Because we know $\qe_b(\lambda, \xb)$ we can take exposures \textit{without} any filter, so to cover
+the full spectral range we need $70 \dlambdaWhite$ exposures.
+
+We also need a spatial model of the sensitivity.  If all the spots had the same brightness we could use the
+data taken to study the spectral response to model the (smoothly-varying) spatial structure.  As each of these
+exposures includes $945 \nspotCCD$ spots this should be sufficient to map the expected smooth variation of the
+monochromatic throughput (\eg we could use radial basis functions or expand to \c 45\th order Zernikes).  In
+theory we only need perform this test at a single wavelength, but it seems prudent to check for
+wavelength-dependent effects in the projector (\eg chromatic effects in the projector optics, diffraction
+moving light outside our measurement apertures).
+
+If the CCDs show spatial features with significant wavelength dependencies (\eg features in the
+anti-reflection coatings) we may need to increase $\Noffset$ for at least some wavelengths.  We do not include
+an estimate of the cost of this possibility in Table \ref{tab:NExposure}. The current test plan at BNL
+(\cite{GilmoreCCDTesting})
+asks the vendors for QE measurements at 5 positions per CCD.
+
+In fact, as discussed in section \ref{secProjector}, the illumination and sizes of all the holes in the mask
+won't be identical and we will need to take a number of exposures with different mask offsets and then solve
+for the intensity of each spot and the size of each hole.  A detailed study of the number of offsets,
+$\Noffset$ needed is \TBD; we shall adopt a nominal value of $\NoffsetNominal$ (we can also reuse one of the
+exposures from the spectral scans).  Because the study need not be repeated at more than one projector
+position the total calibration time is insensitive to the value of $\Noffset$.
+
+We also need to know the small-scale variability of the response, primarily due to pixel effects.  These are
+not expected to show strong spectral features, and may be measured using the flat field screen at a relatively
+coarse wavelength resolution.  It is not easy to think of pixel-scale
+effects that evolve, but this data set may also be used to monitor the non-azimuthally symmetrical
+evolution of the system.
+
+What can evolve is structures on the filters (although dust motes are far smaller than the beam
+size at the filter).  We can monitor contamination with a single flat field taken at the central wavelength,
+but we allow for taking a small number of flat fields per filter.
+
+These exposures may also be used to monitor the gain, although better measurements may be obtained using
+cosmic rays in science and dark exposures.
+
+While taking flats we may as well also take bias and dark measurements (although these could also be taken on
+dark and stormy nights).
+
+Finally, we need to know the fringe frames (especially in the y-band).  We care about fringing in two ways: it
+produces small-scale structure in the sky, and it produces small-scale modulation in the throughput. It is
+possible that the former will be best measured from the sky, but the latter should be measured directly. Once
+again we can use unfiltered light, but need to scan at 1nm resolution. This is expensive.  In reality we can
+probably relax this requirement.  In the blue there are very few bright lines to worry about, and the chips
+are thicker in units of wavelength.  Because fringes cover many pixels we can probably use data with lower S/N
+per pixel (recovering the fine structure from the regular flats);  together these approaches are worth
+at least a factor of two, and probably five.
+
+\subsubsection{Frequency of Measurements}
+
+Please refer to Table \ref{tab:NExposure} for the exposure times.
+
+Not all these measurements need to be made at a common cadence.  Because of the possibility of contamination
+we need to measure the per-pixel with-filter flats frequently; we say `daily' in Table \ref{tab:NExposure} but
+weekly would probably be sufficient (or possibly whenever we change filters).
+
+The cost of the no-filter flat fields is comparable, but monthly scans should be good enough
+as it is hard to think of effects that vary even that fast.
+
+The dark exposures are put in at a weekly cadence, but they are expected to vary only slowly if at all;
+the bias exposures are cheap and monitor changes in the noise properties of the amplifiers so we may
+as well take them daily.
+
+The system throughput, like the no-filter flat fields, would be expected to vary only slowly, and we
+propose that they be taken at the same cadence, monthly.  Note that we could take a subset more often.
+Whenever we take spot-projector flats we should also measure the mask illumination, but this is relatively
+cheap.
+
+Finally, the fringes are not expected to vary as they are defined by the silicon; we conservatively
+take a set of fringe frames every year, but expect that this could be relaxed.  Unfortunately doing
+so does not diminish the needed calibration in the first year unless the camera team delivers the
+required fringe data.
+
+\subsection{The Filter Transmission}
+\label{sec:MeasureFilters}
+
+One option for measuring the filter transmissions as a function of position is to build a machine that
+passes an f/1.2 beam through the filter and into a spectrophotometer; if the beam diameter is \c 10cm
+this directly measures the transmission as seen by the camera at that point in the filter, and we only
+need \c 50 exposures to fully characterise the system.
+
+In the absence of such a machine,
+the spot projector can be used to monitor or measure the filter throughput. The area of the filter illuminated
+is about $2.1\% \nspotCCD$, and we need \c 2520 $\dspotProjector \overfillFactor \dlambdaFilter \nband
+\fracBandwidth$ exposures to cover the full spectral range; 31.5 hours.  To explore all positions on the
+filter would take 1470 hours with 10s flats.
+
+If we assume that
+the non-filter part of the transmission has no azimuthal symmetry, then these estimates must
+be increased by a factor of \c 45 and a full exploration would be prohibitively expensive.
+
+It seems likely that we can use at least ten times as many spots without causing significant confusion due to
+ghosting, in which case each pointing of the collimated exposure illuminates \c 20\% of the filter and we gain
+a factor of 10, so around 150 hours of integration.  If we're willing to make stronger assumptions about the
+spatial coherence of the evolution of the filters we can obviously use fewer exposures.  For example, if we
+assume that the properties of the filter don't vary significantly on the scale of the 10cm disk illuminated by
+M1, the 31.5 hour number quoted above is sufficient.
+
+\endgroup                               % macros
