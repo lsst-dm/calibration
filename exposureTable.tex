@@ -1,0 +1,24 @@
+\begin{table}
+\begin{center}
+  \begin{tabular}{lrcrrrrl}
+Activity             & Interval & Type & N/interval & N/year & t/interval & t/year & Scaling \\
+                     &      day &      &            &        &       hour &   hour &  \\
+\hline
+contamination        &        1 &    F &        120 &  43800 &       0.43 &    158 & $\nband \nPointPerFilter \nFlat$ \\
+bias                 &        1 &    F &         10 &   3650 &       0.01 &      2 &  \\
+dark                 &        7 &    F &          3 &    156 &       0.84 &     44 & $\tdark$ \\
+per-pixel flatfield  &       30 &    F &         70 &    851 &       0.25 &      3 & $\dlambdaFlat \nFlat$ \\
+system throughput    &       30 &    S &        840 &  10220 &      10.50 &    128 & $\dspotProjector \overfillFactor \dlambdaWhite$ \\
+mask illumination    &       30 &    S &         63 &    766 &       0.79 &     10 & $\dlambdaOffset \noffset$ \\
+fringe flat          &      365 &    F &      84000 &  84000 &     303.33 &    303 & $\dspotProjector \overfillFactor \dlambdaFilter \nFlat$ \\
+\end{tabular}
+  \caption{Number of exposures needed to accomplish various tasks once we know $qe_n(\xb, \lambda)$.
+    The `Types' are \textit{F}lat and \textit{S}pot.
+    Per year, we need a total of 143444 exposures (648 hours),
+    or an average of 392 exposures per day (1.77 hours).  \Nb only the `calibration' exposures
+    are taken with a filter in the beam.
+    }
+  \label{tab:NExposure}
+\end{center}
+\end{table}
+    
