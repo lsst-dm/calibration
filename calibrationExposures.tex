@@ -3,6 +3,7 @@
 % products for the main telescope
 %
 \section{Proposed Calibration Exposures}
+\label{sec:CalibrationExposures}
 
 \begingroup                             % macros
 \newcommand{\DspotProjector}{D_{\mbox{\tiny spot}}} % Diameter of spot projector
@@ -84,8 +85,9 @@
 \end{center}
 \end{table}
 
-Nominal values for parameters such as the spot projector diameter, wavelength steps, and exposure
-times are given in Table \ref{tab:CalibrationParams}.
+Nominal values for parameters such as the spot projector diameter, wavelength steps, and exposure times are
+given in Table \ref{tab:CalibrationParams}.  This table does \textit{not} include filter change times, which
+there need to be added and should add at most 10--15 minutes per day (not trivial).
 
 Let us initially assume that at all times we know the filter bandpasses $\qe_b(\lambda, \xb)$
 as a function of position on the filter and wavelength.  We'll consider whether we will be able
@@ -122,10 +124,10 @@ wavelength-dependent effects in the projector (\eg chromatic effects in the proj
 moving light outside our measurement apertures).
 
 If the CCDs show spatial features with significant wavelength dependencies (\eg features in the
-anti-reflection coatings) we may need to increase $\Noffset$ for at least some wavelengths.  We do not include
-an estimate of the cost of this possibility in Table \ref{tab:NExposure}. The current test plan at BNL
-(\cite{GilmoreCCDTesting})
-asks the vendors for QE measurements at 5 positions per CCD.
+anti-reflection coatings) we may need to increase $\Noffset$ for at least some wavelengths. The current test
+plan at BNL (\cite{GilmoreCCDTesting}) asks the vendors for QE measurements at 5 positions per CCD and this
+will probably suffice.  We do not include an estimate of the cost of this possibility in Table
+\ref{tab:NExposure}.
 
 In fact, as discussed in section \ref{secProjector}, the illumination and sizes of all the holes in the mask
 won't be identical and we will need to take a number of exposures with different mask offsets and then solve
@@ -165,7 +167,9 @@ Please refer to Table \ref{tab:NExposure} for the exposure times.
 
 Not all these measurements need to be made at a common cadence.  Because of the possibility of contamination
 we need to measure the per-pixel with-filter flats frequently; we say `daily' in Table \ref{tab:NExposure} but
-weekly would probably be sufficient (or possibly whenever we change filters).
+weekly would probably be sufficient (or possibly whenever we change filters).  These are the only
+calibration exposures that need filters, and are therefore the only exposures that need pay the cost
+of filter changes.
 
 The cost of the no-filter flat fields is comparable, but monthly scans should be good enough
 as it is hard to think of effects that vary even that fast.
@@ -198,8 +202,7 @@ is about $2.1\% \nspotCCD$, and we need \c 2520 $\dspotProjector \overfillFactor
 \fracBandwidth$ exposures to cover the full spectral range; 31.5 hours.  To explore all positions on the
 filter would take 1470 hours with 10s flats.
 
-If we assume that
-the non-filter part of the transmission has no azimuthal symmetry, then these estimates must
+If we assume that the non-filter part of the transmission has no azimuthal symmetry, then these estimates must
 be increased by a factor of \c 45 and a full exploration would be prohibitively expensive.
 
 It seems likely that we can use at least ten times as many spots without causing significant confusion due to

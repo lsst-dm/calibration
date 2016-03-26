@@ -22,13 +22,13 @@ $(DEPS_DIR) :
 	makeglossaries $*.glo
 
 %.pdf : %.tex
-	mkdir -p $(DEPS_DIR)
-	export BIBINPUTS=$(LSST_REFERENCES_DIR); \
+	@ mkdir -p $(DEPS_DIR)
+	@ echo Running latexmk
+	@ export BIBINPUTS=$(LSST_REFERENCES_DIR); \
 	$(LATEXMK) -pdf -pdflatex="pdflatex -interaction=nonstopmode" -deps-out=$(DEPS_DIR)/$@P $< 2>&1 | \
-			tex-fix-log-linebreaks | \
-			grep -v 'Not recognizing known sRGB profile that has been edited'
-
-
+			grep -v ' restricted \\write18 enabled.' | \
+			grep -v 'Not recognizing known sRGB profile that has been edited' | \
+			tex-fix-log-linebreaks
 clean:
 	latexmk -CA
 	$(RM) *.acn *.acr *.alg *.bbl *.glg *.glo *.gls *.xdy *.run.xml

@@ -208,7 +208,10 @@ to measure it well enough to handle an arbitrary SED.
 \label{secProjector}
 
 As discussed in Appendix \ref{appProjector}, we will be able to project a mask with a set of holes onto the
-focal plane.  Each hole produces a \c 50pixel spot and a series of ghosts;  the density of holes in the
+focal plane.  Each hole produces a \c 50pixel spot\footnote{Available projectors are close to diffraction
+  limited, and with a 30cm diameter we should be able to produce images as small as 0.7'' FWHM at $1\mu m$.
+  }
+  and a series of ghosts;  the density of holes in the
 mask will be chosen to allow us to separate the primary spots from the ghosts, possibly using an optical model
 of the system.  In the discussion of $\Flat$ above we implicitly defined the system throughput to be the
 fraction of the incident light that is detected in the primary spot, with the ghosts creating $\additive$.
@@ -260,19 +263,20 @@ $$
                               \int_{pupil} \additive_b \qe_b^{filt} \qe^{tel, vig}\, d\Xb
 $$
 If, as would be expected, the first term varies only slowly over a chip, then rastering the spots to
-illuminate \XXX{9} positions on each chip allows us to evaluate $P_b^\ell(\ib)$, \ie at every pixel.
+illuminate some number \TBD of positions on each chip allows us to $P_b^\ell(\ib)$, \ie at every pixel.
 Unfortunately we still don't know how to find the pixel-to-pixel variability.  If there is a clear
 separation between the spatial scales probed by $P$ and $\Flat$ (\ie and $\additive$) we can combine
 the two estimates to generate a flatfield uncontaminated by scattered light and ghosting.
 
 For many cameras the spatial structure of $\additive$ has sharp features.  Furthermore, the operations
-described above are \XXX{expensive}, and we have to repeat for every \c 1nm step in wavelength.  If we know
+described above are expensive (see Table \ref{tab:NExposure}), and we have to repeat for every \c 1nm step
+in wavelength.  If we know
 the filter bandpasses $\qe_b^{filt}(\ib)$ at every point in the focal plane (see section
 \ref{secFilterProfiles}) we may use a slightly different approach.
 
 If we take both domeflat and collimated projector data without a filter in the beam\footnote{
   The projector beam is so slow that the
-  image quality will \XXX{not be significantly degraded}} we may repeat
+  image quality should not be significantly degraded} we may repeat
 the above analysis without the $\qe_b^{filt}$.  This has two advantages: there are
 no strongly chromatic elements so we can use larger steps in wavelength;  and the $\additive$
 image should be much weaker (as much of it comes from the filter edges).  Having \XXX{achieved a
@@ -294,13 +298,11 @@ Because the screen isn't at infinity and because of vignetting, surface brightne
 the flat field screen leads to spatial structure in the focal plane: $i \ne 0$.
 
 We may get a handle on this surface brightness by employing a pinhole camera in place of a
-filter. Unfortunately the angular distribution of light imaged by this camera (with an f/ratio of
-\c 1 \XXX{(is this right?  It would be if there were no power in any optics as we're looking at
-  a \c 10m screen at a distance of \c 10m)}, whereas the domeflat only accepts light from within
-1.75$^\circ$ of normal.
-
-If we knew the screen's BDRF we could correct for this, and calculate $i$ directly.
-
+filter.
+\XXX{Chris Stubbs worries that the angular distribution of light imaged by this camera
+  is very different from the domeflat illumination; \c $f/1$ as opposed to only within 1.75$^\circ$ of normal.
+  which would require us to know the screen's BDRF to make appropriate corrections.  I don't see this,
+  as the pinhole is in the same beam}
 Alternatively, we expect the effects of $i$ to be have only weak spatial and spectral variability.  If this
 is the case, we can use dithered star fields to make a correction.
 
@@ -321,11 +323,25 @@ the sensitivity measured with and without the filter is the filter bandpass:
 (again assuming that $\qe^{qe, optics, ccd}$ are not dependent on $\lambda$).  If $i$ is well behaved (\eg
 Lambertian) this is exactly what we want, with the correct average over the rays traversing the filter.
 
+\subsubsection{Fringing}
+
+There is one extra wrinkle.  CCDs behave like Fabry-Perot cavities, and this modulates the throughput. Because
+the spatial variability comes from thickness variations in the devices it can have fine scale structure, and
+the correct way to measure this is with a white-light flat-field exposure taken at \c 1nm spacings.  We
+include an estimate of how long it would take to acquire this data in Section \ref{sec:CalibrationExposures},
+but it is not obvious if this is really necessary.
+
+Fringing in the LSST chips is expected to be small as not only are the devices thick, so little light is
+returned from the bottom of the device to interfere, but also the very fast beam washes out the
+effect. Preliminary estimates (\cite{document-8590}) suggest that fringing will not be important for
+LSST, but we believe that it would be premature to ignore its effects.  Note that fringing is important
+even in the absence of strong emission lines;  lines produce clear artifacts in the sky brightness, but
+interference modulates the sensitivity even for continuum sources.
+
 \section{The atmospheric transmissivity \texorpdfstring{$S^{atm}(\lambda)$}{Satm}}
 
-The current baseline plan is to use a 1.2m telescope with $R \sim $ 300 --- 400 to
-take spectra of standard stars with a cadence of \c 5 minutes (3 minutes
-to integrate;  2 minutes to slew and acquire).  The expected
+The current baseline plan is to use a 1.2m telescope with $R \sim $ 300 --- 400 to take spectra of standard
+stars with a cadence of \c 5 minutes (3 minutes to integrate; 2 minutes to slew and acquire).  The expected
 S/N at 12$^{th}$ magnitude is 500/resolution element (300 in u and y).
 
 There will also be two units to measure water vapour;  a all-sky monitor using GPS satellites
@@ -432,8 +448,6 @@ resolution).
 \section{Flatfields}
 \label{secFlatFielding}
 
-\XXX{Add a discussion of fringing in the sky and the sensitivity.}
-
 Section \ref{secInstrumental} discusses analysing the response to the flatfield screen,
 $(1 + i + \additive_b) \qe_b^{filt} \qe^{tel} \qe^{qe} \qe^{optics} \qe^{ccd}$.
 Before we can create a flatfield image for band $b$ we need to:
@@ -446,7 +460,7 @@ Before we can create a flatfield image for band $b$ we need to:
 \end{itemize}
 
 Correcting for $i$ is always desireable and we shall assume that it's been accomplished.\footnote{A better
-  solution would be to design a flatfield screen which delivers $i \equiv 0$} It might seem obvious that the
+  solution would be to design a flatfield screen which delivers $i \equiv 1$} It might seem obvious that the
 flatfield should exclude $\additive$ and correct for $\qe^{optics} \qe^{ccd}$, resulting in a map of the
 detector's true QE.  However, this is probably not a good idea as it
 \begin{itemize}
@@ -469,7 +483,7 @@ We therefore propose that the flatfields be calculated as follows:
 \begin{itemize}
   \item Use the sky's SED modified by $\qe_b^{filt}$. We could use different sky models for different phases
     of the moon (or solar cycle), or measure the sky emission directly (possibly using the calibration
-    telescope). \XXX{We probably need to at least allow for the phase of the Moon.}
+    telescope). We will need to at least allow for the phase of the Moon.
 
   \item Do not correct for $\additive_b$ (resulting in an incorrect estimate of the sensitivity).
 
@@ -481,6 +495,8 @@ We therefore propose that the flatfields be calculated as follows:
 \end{itemize}
 This is the flatfield that best flattens the sky once warped onto a tangent plane,
 at the cost of photometric errors.
+We will need to include fringe frames made from medianed sky exposures in the sky model, but the 
+dimensionality of the required fringe set is not yet clear. \XXX{Expand at some point}
 
 We will further discuss the consequences of this choice in section \ref{secMeasuring}.
 
