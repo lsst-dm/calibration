@@ -1,0 +1,502 @@
+\documentclass[12pt]{article}
+\usepackage[top=1cm, bottom=2cm, left=2cm, right=2cm]{geometry} 
+\usepackage{hyperref}
+\usepackage[style=authoryear, uniquename=false, backend=biber]{biblatex}
+\usepackage{amsmath} %maths
+\usepackage{graphicx}
+\usepackage{import}
+\usepackage{xspace}
+\usepackage{perpage}
+%
+\renewcommand*{\thefootnote}{\fnsymbol{footnote}}
+\MakePerPage{footnote}
+
+\renewcommand{\c}{\textit{c.}\xspace}
+\newcommand{\eg}{\textit{e.g.}\xspace}
+\newcommand{\etc}{\textit{etc.}\xspace}
+\newcommand{\ie}{\textit{i.e.}\xspace}
+\renewcommand{\th}{\ensuremath{^{\mbox{\tiny th}}}\xspace}
+\newcommand{\Nb}{\textit{N.b.}\xspace}
+\newcommand{\nb}{\textit{n.b.}\xspace}
+\newcommand{\ib}{{\boldsymbol i}}
+\newcommand{\Xb}{{\boldsymbol X}}
+\newcommand{\xb}{{\boldsymbol x}}
+\newcommand{\xib}{{\boldsymbol \xi}}
+\newcommand{\zerob}{{\boldsymbol 0}}
+
+\newcommand{\Flat}{{\cal F}}
+\newcommand{\screen}{{\cal I}}
+\newcommand{\additive}{{\cal A}}
+\newcommand{\qe}{{\cal S}}
+%
+\newcommand{\inputData}[1]{(inputs: \P \ref{inputs:#1})}
+\newcommand{\inputDataII}[2]{(inputs: \P \ref{inputs:#1}, \ref{inputs:#2})}
+%
+\newcommand{\TBD}{\textit{T.B.D.}\xspace}
+\newcommand{\XXX}[1]{\textbf{XXX #1}\xspace}
+
+\newcommand{\addLabel}[1]{\P \label{#1}\ref{#1}}
+\newcommand{\addMyLabel}[2]{\P \myLabel{#1}{#2}\ref{#1}}
+\makeatletter
+\newcommand{\myLabel}[2]{\def\@currentlabel{#2}\label{#1}}
+\makeatother
+
+\newcommand{\secRef}[1]{Sec. \ref{sec:#1}}
+
+\bibliography{biblio,LSSTbiblio}
+
+\begin{document}
+\title{LSST's Calibration Pipelines}
+\author{Robert Lupton}
+%\date{1996-03-06}
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+
+This document outlines the software required to produce calibration products, and then apply them.
+
+Appendix \ref{sec:calibrationDatasets} lists the available inputs to the calibration products, and datasets
+listed therein are referenced as \eg \inputData{monoFlat}.
+
+\section{Calibration Products}
+
+\subsection{Biases}
+
+Bias frames will be produced by taking the median of several-to-many bias exposures.
+\inputData{bias}.
+
+The individual frames will be overscan-corrected and then combined using standard LSST image stacking code.
+With the LSST 2s readout, we do not expect to need to remove cosmic rays explicitly, but a robust stacking algorithm will be required.  If the readout noise in any channels is too low (relative to the gain) to properly
+sample the noise distribution, a simple fix is to add sets of $n$ (\eg 3) bias exposures before creating
+the stacked image.
+
+\subsection{Linearity}
+\label{sec:linearity}
+
+We care about linearity for a number of purposes:
+\begin{itemize}
+\item Correcting potential photometric errors.
+\item Making the PSF independent of brightness level.
+\item Matching background levels for different readout amplifiers.
+\end{itemize}
+
+We expect the camera team to deliver linearity curves \inputData{linearityCurve}.
+
+We will be able to check these values, and their stability, in at least three ways:
+\begin{itemize}
+\item Looking at the flux of objects as a function of the background level.
+\item Looking at PSF residuals as a function of brightness and background level.
+\item Looking at the offsets between amplifier segments in flat fields taken at different light levels.
+\end{itemize}
+
+\subsection{Crosstalk}
+\label{sec:crosstalk}
+
+We expect the camera team to deliver a crosstalk matrix coupling every amplifier to every other amplifier
+\inputData{crosstalk}; we hope and expect that most of these matrix elements will be 0.
+
+We can can also check the cross talk coefficients using CBP data \inputData{CBP:crosstalk}, saturated
+stars' bleed trails, or cosmic rays.  The latter two measurements are likely to only be useful for
+checking crosstalk coefficients, while a suitably chosen set of CBP spots would allow us to make
+measurements \textit{ab initio}.
+
+\subsection{Darks}
+
+Dark frames will be produced by taking the median of several-to-many dark exposures, each of length c. 300s;
+\inputData{dark}.
+
+The individual frames will be run through standard ISR processing (including cosmic ray removal) before
+being combined;  the combination may be done using standard LSST image stacking code.  If we disable the
+cosmic ray removal a much larger number of exposures will be required.
+
+\subsection{Flat Fields}
+
+Even with high-QE devices such as those in the LSST camera, the sensitivity of the detectors is a function of
+the SED of the light illuminating them; this is made worse by any spatial structure in the transmission of the
+filters or of any other optical elements in the system.  Additionally, the light received at a point in the
+focal plane is the sum of the focused light and of any ghost or scattered contribution.
+
+For photometry of objects only the focused part is of interest, while for background subtraction it is the
+total incident light that matters.
+
+We plan to apply corrections to the data for the static part of the pixel size non-uniformity.  It is
+\textit{very} important that the same corrections be applied to the flat fields.
+
+\subsubsection{Broadband and Monochromatic Flats}
+
+We will take both broadband \inputData{broadFlat} and `monochromatic' \inputData{monoFlat} flat fields.
+As discussed below, we will use the latter to estimate the correct flat field for light with the SED of the
+night sky, and the former to correct our data for the effects of dust on the filters and other effects that
+change on a short time scale.
+
+\subsubsection{Contamination of Filters and Other Optical Elements}
+
+Dust motes appearing on filters have an affect upon the system flat fields.  This is not expected to be
+a serious effect for LSST as the beam at the filter has a diameter of \c 10cm (effective diameter \c 8cm)
+so only an unexpectedly large contaminant will have a measureable effect.
+
+However, we expect to take broadband flats \inputData{broadFlat} every time we put a filter into the filter
+changer, and probably as a routine part of afternoon checkout.  We will synthesise a broad-band flat from the
+monochromatic flats \inputData{monoFlat} and filter transmissions \inputData{filterTransmission}, and divide the
+measured by the synthetic flats; by taking contaminants to be gray (\eg opaque, but with a small covering
+factor) we will use the ratio to correct the monochromatic flats for any changes since they were taken.
+
+Another approach would be to use a broadband flat taken at the same time as the monochromatic flats
+as the reference image.  In reality we will do both;  any discrepancy will be a sign of potential
+drift in the filter curves (see \secRef{filterTransmission}).
+
+\subsubsection{Flats for Background Estimation}
+\label{sec:backgroundFlats}
+
+The calibration system will produce a low-resolution spectrum of the night sky \inputData{nightSkySpectrum},
+and we will use this to synthesise a flat field image for the sky's SED from the monochromatic dome flats
+\inputData{monoFlat}.
+
+We expect that this image will have large scale structures different from those seen in sky image
+that are due to illumination gradients on the flat field screen, the screen's non-uniform BDRF, and
+the fact that the screen is not at infinity.  We do not expect these gradients to cause problems in
+the background subtraction, and will not discuss them further except to say that if desired we could
+correct them using median night-time sky frames.
+
+Note that we are not proposing using twilight or nighttime sky flats as they do not have the desired
+SED and may cause extra problems due to polarization.
+
+\subsubsection{Flats for Photometry}
+\label{sec:photometricFlats}
+
+The flat fields described in \secRef{backgroundFlats} are not suitable for photometry of astronomical
+objects for at least two reasons;  they include indirect light, and they have the wrong SED.  We can
+use the Collimated Beam Projector (CBP; \inputData{CBP}) in conjunction with the monochromatic flats
+\inputData{monoFlat} and filter transmission curves \inputData{filterTransmission} to solve this.
+
+All the CBP data will be processed using the standard LSST ISR, except that no flat fields will be applied.
+We will then use standard LSST aperture photometry to measure the number of counts in each CBP spot.
+
+\begin{itemize}
+\item Estimation of the Photometric Flats at a Finite Number of Points.
+
+  If all the spots projected by the CBP were known to have the same intensity, then the spot fluxes measured
+  from a scan in wavelength \inputData{CBP:mono} would give us the relative QE at a set of points in the
+  camera.  In reality the spots are not all equal (due to an imperfect mask, non-uniform illumination, and
+  varying plate scale) so we need to solve for their relative intensities; we can do this by moving the spots
+  around the camera, \inputData{CBP:spot}, in a manner similar to the standard processing of star flats.
+
+  We can then correct the monochromatic spots \inputData{CBP:mono} and arrive at the relative QE at a set of
+  points in the camera, as a function of wavelength, in the absence of a filter.
+
+\item Estimation of the Photometric Flats for All Pixels
+
+  These spot data \inputData{CBP:mono} only sample one point on M1, and therefore only one path
+  through the optical system.  We then use the data taken at different points in M1 \inputData{CBP:M1}
+  to correct these data so that they reflect the performance of the entire optical system.  We
+  could sample all of M1, but in practice we expect to use many fewer pointings.
+
+  If we could repeat this operation putting the CBP spots down on every pixel we would have our
+  desired flat field;  unfortunately this is impracticable.
+
+  Instead, we will take the monochromatic dome flats \inputData{monoFlat} and use the known QE at the position
+  of the CBP spots (without applying the filter transmission curves) to correct for ghosting.  A sketch
+  of the procedure is:
+  \begin{itemize}
+  \item Fit a surface through the CBP values (either per-CCD or for the whole camera); a spline would
+    be a reasonable choice (either the product of two 1-D splines, or a thin plate spline.  I would
+    start with the former as they are easier to understand).
+  \item Divide the dome flat by this curve, giving an estimate of the illumination and chip-to-chip
+    correction
+  \item Fit a curve to this correction, and correct the dome screen.  This should be close to the
+    values derived from the CBP data (and can preserve discontinuities in the QE across chips which
+    the fitted curves have a hard time following).
+  \item Iterate a couple of times;  each iteration should result in a smaller and smoother correction,
+    which we are therefore better able to model.
+  \end{itemize}
+
+  Repeat this operation at a suitable set of wavelengths, chosen so that the variation of these corrections as
+  a function of wavelength is well captured; we now know the the relative QE for all pixels in the camera, as
+  a function of wavelength, in the absence of a filter.
+  
+  Using the filter transmission curves \inputData{filterTransmission} we can derive the relative QE for all
+  pixels in the camera for each filter at 1nm resolution; this is our monochromatic photometric flatfield.
+
+  \Nb we are in a position to provide a model of the ghosting following this analysis in two ways:
+  \begin{itemize}
+  \item By analysis of the CBP data, concentrating not on the spots but on the scattered/ghost light
+  \item By looking at the corrections applied to the CBP spot data to arrive at the dome screen data
+  \end{itemize}
+  We do not need this information to calibrate LSST, but it will provide a valuable cross-check, and
+  will inform the camera and telescope teams about the state of the optical elements.
+
+\end{itemize}
+
+
+\subsection{Fringe Correction}
+\label{sec:fringe}
+
+Although the thick, deep-depletion LSST CCDs reduce the amplitude of fringing they do not remove the necessity
+to handle it correctly in the z and y bands.  Fringing is a QE effect, and this QE variation coupled to night
+sky line emission (mostly from OH) leads to spatial structures in the background.
+
+The classical approach to fringing is to subtract a multiple of a fringe frame, made by taking the median
+stack of a very large number of science exposures scaled by their sky intensity.  Because the lines in the
+night sky spectrum vary in relative intensity during the night the structure of the
+fringing will, in general, vary.
+
+In addition, the night sky shows spatial structures in rotational temperature and intensity with wavelengths
+of \c 2km (the OH emission is at \c 100 km, so wavelengths of \c 1 degree, or 4 CCDs).  With a
+windspeed of 60 km/s the smoothing scale (in the wind direction) is \c 1 CCD.  These spatial structures change
+on time scales of \c 10 minutes.
+
+If a CCD is of more-or-less of constant thickness with small ($\ll 1\mu$m) variations the relative variation
+of the line intensities do not significantly affect the structure of the flats as the fringe patterns from
+different lines are very similar (although of different amplitude and phase).  However, at least some of the
+LSST chips show 20 fringes at 1$\mu$m from centre to edge of the device, which implies that the
+\textit{pattern} of the fringing will change as the line ratios change.
+
+For small fields of view, or long integrations, where the spatial structure in the night sky brightness may be
+ignored it is possible to model the variation in the fringing using a PCA decomposition of sky frames.
+Unfortunately LSST will show changes in fringe patterns and intensities coming from both the spectral and
+spatial variation of the sky and we are planning to use a different approach.
+
+As described in \secRef{backgroundFlats} we will synthesise flat fields that match the night sky's SED.  In a
+little more detail relevant to fringing, the calibration system will produce a spectrum of the night sky with
+resolution \c 200, and this is sufficient to predict the distribution of night sky line intensities
+\inputData{nightSkySpectrum}.  We will then use this low-resolution spectrum to construct a flat field from
+the monochromatic dome flats \inputData{monoFlat} that flatten the night sky spectrum, removing small-scale
+structure due to the sky emission.
+
+Note that we assume that a single spectrum within the field of view is sufficient to constrain the
+night sky spectrum, whereas in reality the (atmospheric!) gravitational waves producing spatial structure
+have the ability to modify the emission spectrum.   As timescales in the atmosphere are \c 10-20 minutes
+we will have many realisations of the spectrum at different points in the sky, and will be able to use
+these to confirm that the effective fringe image is spatially uniform;  if it transpires that this is
+not the case we will be able to construct a small number of flats that capture the variation, and
+use them to remove the variation in the spatial structure.
+
+\subsection{Filter Transmission Curves}
+\label{sec:filterTransmission}
+
+The filter transmission curves \inputData{filterTransmission} will be provided by the camera team, but by
+using monochromatic spots from the CBP with \inputDataII{CBP:filter}{CBP:leak} and without filters in the beam
+\inputData{CBP:mono} we can monitor the filters for any evolution, including light leaks.
+
+Note that we are not exploring all possible light paths through the filters; while 2.5 CBP spots per CCD
+mean that we have light passing through every point on the filter they are not passing through every
+patch on the filter at every angle.
+
+In theory we can measure the filter curves using the CBP, but it'd take a long time; in full generality \c 470
+exposures for each 1nm step.  If we are willing to make strong enough symmetry assumptions this can be reduced
+to \c 6 exposures per wavelength step; an extension of \inputData{CBP:M1} to higher spectral resolution, and
+with the filter in the beam.
+
+\subsection{Pixel Size Effects}
+\label{sec:pixelSize}
+
+It has become clear that much of the pixel-to-pixel variation seen in flat field images is
+in fact due to variations in the sizes of the pixels.  These are popularily divided into two
+parts:
+\begin{itemize}
+\item Large scale features such as the ``tree-rings'' due to variation in the properties of the
+  silicon, or perturbations in the electric field (\eg ``glowing edges'').
+\item Small-scale, quasi-random, variations in the pixel sizes.
+\end{itemize}
+
+If we interpret the flat fields in terms of QE variation we will make errors measuring fluxes (although
+not while estimating surface brightnesses).
+
+The pixel size variation may be thought of as a 2-D vector field $\xib$, the offset of each corner of each
+pixel from a regular grid. There are various approaches being taken to measure the sizes of the pixels.
+
+If you can reduce the distortion
+to a 1-dimensional function (\eg tree rings with circular symmetry about a point; 'glowing edges' that are
+a function of distance from the edge of the sensor) then high-signal-to-noise flat fields can be used to
+determine the distortions \inputData{broadFlat}.
+
+The small-scale variations are harder.  If we are willing to make the arbitrary assumption that $\xib$ is the
+gradient of a scalar we can solve for it from flat field data.  Aaron Rudman's group, working on DECam data,
+makes the surprising claim that they can find $\xib$ by looking for a solution close to $\xib = \zerob$.
+
+If such approaches fail, it is probably possible to measure $\xib$ by using images of 1-D sinusoids projected
+onto the CCD, either by the camera team or on the mountain using the CBP.
+
+See \secRef{correctingPixelSizes} for a discussion of how we will use $\xib$ once it is known.
+
+\subsection{Brighter-Fatter}
+\label{sec:brighterFatter}
+
+The measurements needed to characterise Brighter-Fatter effects are not yet clear.  Current state of the art
+is to use pixel-to-pixel correlations in flat fields taken at different flux levels \inputData{broadFlat}.  It
+is possible that we'll need other measurements, possibly generated by projecting masks onto the camera using
+the CBP.
+
+\subsection{Atmospheric Absorption}
+
+The calibration telescope will deliver a spectrophotometrically calibrated spectrum for a bright ($\le 8$)
+star in the field of almost all 8.4m visits \inputData{starSpectrum}, covering at least the bandpass of the
+filter currently in use.  These stars will be chosen to have well-known spectrum
+\inputData{standardStarSpectrum} based on their photometry. \XXX{This requires more thought!}
+
+Using atmospheric models (\eg MODTRANS, extended to include a variable spectral index for the aerosols)
+we will fit these two spectra to derive current atmospheric parameters in the direction of the boresight.
+We expect to make use of other atmospheric information \inputData{atmosphericData} such as barometric pressure
+and $O_3$ satellite data.
+
+We will also use known photometry in the same field \inputData{photometricStandards} to help break the
+degeneracy between \eg aerosol index and gray absorption.
+
+We do not yet know how we will make use of the time-series of atmospheric parameters, nor how we will
+use this series to fill in the cases where the calibration telescope fails to keep up with the 8.4m.
+
+\Nb It is probably not necessary to know the true spectrum of the star, as we only need to reduce the
+atmospheric absorption to standard conditions using the ensemble of all star spectrophotometric data.
+
+\section{Applying Calibration Products}
+
+\subsection{Biases}
+
+We will fit the overscan using a suitable function in the row direction (\eg a spline), taking
+due account of cosmic ray hits during readout and bleeding into the overclock as saturated
+stars are clocked away from the amplifier splits.
+
+We will then subtract the bias frames.
+
+\subsection{Linearity}
+
+After bias subtraction we will correct for non-linearity.  \Nb this assumes that the sole
+source of non-linearity is in the readout amplifier.  If there is significant non-linearity
+introduced further down the signal chain -- which seems unlikely -- we may need to extend
+out non-linearity corrections.
+
+\subsection{Crosstalk}
+
+We next correct for crosstalk, including intra- and inter-chip corrections if necessary.
+
+\subsection{Darks}
+
+After cross-talk correction we will subtract scaled dark frames.
+
+\subsection{Flat Fields}
+
+We next flat field the data, using the flat constructed using the sky SED.
+
+Note that this
+flat should correct for fringing, so there is no need for any fringe subtraction.   As discussed
+in \secRef{fringe} it is possible that spatial and spectral variation over the field will lead
+to residual fringe structures, in which case we will also performance of classical fringe frame
+subtraction.
+
+\subsection{Pixel Size Effects}
+\label{sec:correctingPixelSizes}
+
+Given the field $\xib$ we may redistribute flux between pixels (it's easier to think about this
+as a correction in first x then y).  Linear estimation of the flux density at the pixel boundary
+is probably sufficient, although higher order weights based on a nominal PSF might be better.
+
+This flux redistribution causes a small correlation between the pixels which we need to track
+with some level of accuracy.
+
+Note that the same corrections were applied to the flat fields, so the combination of these
+two corrections leaves the uniform unstructured nature of the background undisturbed.
+
+\subsection{Brighter-Fatter}
+
+We then redistribute flux between pixels to correct for the brighter-fatter effect.  Note that
+this does \textit{not} cause correlations between pixels, rather it removes the correlations
+induced by the electric field shifts that resulted in brighter-fatter in the first place.
+
+\subsection{Background Subtraction}
+
+We now proceed with normal image processing activities, leading to photometric and astrometrically
+calibrated images.  At some point (\eg after background matching) we subtract the background.
+
+\subsection{Final Photometry}
+
+For each observation of each object we know:
+\begin{itemize}
+\item The QE of the device as a function of wavelength at the position of the object;
+  including the effects of the filter
+\item The QE of the device as a function of wavelength assumed when flat fielding;
+\item The atmospheric transmission;
+\item The object's colour
+\end{itemize}
+(Yes, there is an apparent circularity here.  But we don't need very good colours -- a few \% is fine -- so
+this is not a fundamental problem;  however the details of how we arrange the computation efficiently
+requires thought).
+
+We then (at least logically -- this may not describe in detail the actual operations carried out):
+\begin{itemize}
+\item Measure the object's flux.
+\item Undo the flat fielding, assumed constant over the scale of the object.
+\item Look up the the canonical SED corresponding to the object's colour (\ie the mean SED for objects with
+  that colour; this may not The object's colour implies a always be correct, although most degeneracies in
+  photo-z estimation are due to similar observed SEDs from objects with different intrinsic SEDs).
+\item Correct this SED for the atmospheric absorption
+\item Calculate the proper flat field for this SED, assumed constant over the scale of the object.
+\item Correct the flux for the incorrect flat fielding we applied.
+\item Record the raw and corrected flux, allowing us to repeat this calculation for any user-provided SED.
+\end{itemize}
+
+Note that
+
+%------------------------------------------------------------------------------
+
+\appendix
+
+\section{Inputs to LSST's Calibration  Pipelines}
+\label{sec:calibrationDatasets}
+
+We will have the following datasets available:
+\begin{enumerate}
+   \item\addLabel{inputs:bias} Sets of bias frames.
+   \item\addLabel{inputs:dark} Sets of 300s dark frames.
+   \item\addLabel{inputs:broadFlat} Sets of flats taken through the standard LSST filters.  We will
+     need flats taken at a number of flux levels to measure brighter-fatter and check linearity.
+   \item\addLabel{inputs:monoFlat} Sets of `monochromatic' (\c 1nm) flat-field screen images taken
+     without the filter in the beam.
+   \item\addLabel{inputs:nightSkySpectrum} Spectra of the night sky near the Calypso boresight, with $R \sim
+  200$.\footnote{It is not entirely clear whether these will be taken on the Calypso or 8.4m boresight.}
+   \item\addLabel{inputs:CBP} Sets of \textit{C}ollimated \textit{B}eam \textit{P}rojector images.
+     The proposed resolutions and steps in these datasets are preliminary.
+     % NOTE that the sub-CBP items have their a, b, c, ... labels set by hand, so caveat emptor
+     % if you add more or change the order.  Yes, I'm lazy.
+     \begin{itemize}
+     \item\addMyLabel{inputs:CBP:mono}{\arabic{enumi}a} Sets of CBP images scanned in wavelength at 1nm resolution every
+       1nm for a fixed set of spot positions on the camera, and for fixed footprint on M1.  No filter
+       should be in the beam.
+     \item\addMyLabel{inputs:CBP:spot}{\arabic{enumi}b} Sets of CBP images scanned in wavelength at 20nm resolution every
+       100nm, while rotating the CBP about a pupil to move the spot pattern around the camera for a
+       fixed footprint on M1.  No filter should be in the beam.
+     \item\addMyLabel{inputs:CBP:M1}{\arabic{enumi}c} Sets of CBP images scanned in wavelength at 20nm resolution every
+       100nm for a fixed set of spot positions on the camera, and for a number of footprints on M1; the
+       minimum number of footprints is \c 6 for a 30cm CBP, but in reality we will explore more pointings to
+       test azimuthal symmetry. No filter should be in the beam.
+     \item\addMyLabel{inputs:CBP:filter}{\arabic{enumi}d} Sets of CBP images scanned in wavelength at 1nm resolution every
+       1nm for a fixed set of spot positions on the camera, and for fixed footprint on M1.  Repeated for
+       every filter. \Nb the wavelength range for each scan need only cover the range for which the filter
+       transmits appreciable light.
+     \item\addMyLabel{inputs:CBP:leak}{\arabic{enumi}e} Sets of CBP images scanned in wavelength at 20nm
+       resolution every 20nm for a fixed set of spot positions on the camera, and for fixed footprint on M1.
+       Repeated for every filter.
+     \item\addMyLabel{inputs:CBP:crosstalk}{\arabic{enumi}f} Sets of CBP images taken with a suitable
+       designed sparse mask to allow us to identify and measure all crosstalk images.  The simplest
+       sparse mask would have only a single spot, used to illuminate each amplifier in the camera in
+       turn (but less sparse solutions are probably also possible).  The wavelengths used are unimportant,
+       and there are no constraints on beam footprints on M1 or filter choice.
+     \end{itemize}
+   \item\addLabel{inputs:filterTransmission} Transmission curves for all the filters as a function of position.
+   \item\addLabel{inputs:linearityCurve}  The linearity curve for every amplifier.
+   \item\addLabel{inputs:crosstalk}  The crosstalk matrix for every pair of amplifiers in the camera.
+   \item\addLabel{inputs:starSpectrum}  Spectrophotometrically-calibrated spectra for stars in
+     the field of view of almost all visits.
+   \item\addLabel{inputs:standardStarSpectrum} Known spectra for bright stars in the field of view of all
+     visits.
+   \item\addLabel{inputs:atmosphericData}  Externally measured parameters of the atmosphere, for
+     example barometric pressure and ozone.
+   \item\addLabel{photometricStandards}  Photometric standards, of a range of colours.  GAIA is a likely
+     source for these data.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+% \printbibliography[heading=bibintoc]
+
+\end{document}
