@@ -1,6 +1,8 @@
 \documentclass[12pt]{article}
 \usepackage[top=1cm, bottom=2cm, left=2cm, right=2cm]{geometry} 
-\usepackage{hyperref}
+\usepackage{color}
+\usepackage[colorlinks=true, citecolor=blue, linktocpage=true]{hyperref} % n.b. glossary colour is set in style
+\usepackage{enumitem}
 \usepackage[style=authoryear, uniquename=false, backend=biber]{biblatex}
 \usepackage{amsmath} %maths
 \usepackage{graphicx}
@@ -18,29 +20,26 @@
 \renewcommand{\th}{\ensuremath{^{\mbox{\tiny th}}}\xspace}
 \newcommand{\Nb}{\textit{N.b.}\xspace}
 \newcommand{\nb}{\textit{n.b.}\xspace}
-\newcommand{\ib}{{\boldsymbol i}}
-\newcommand{\Xb}{{\boldsymbol X}}
-\newcommand{\xb}{{\boldsymbol x}}
 \newcommand{\xib}{{\boldsymbol \xi}}
 \newcommand{\zerob}{{\boldsymbol 0}}
-
-\newcommand{\Flat}{{\cal F}}
-\newcommand{\screen}{{\cal I}}
-\newcommand{\additive}{{\cal A}}
-\newcommand{\qe}{{\cal S}}
 %
-\newcommand{\inputData}[1]{(inputs: \P \ref{inputs:#1})}
-\newcommand{\inputDataII}[2]{(inputs: \P \ref{inputs:#1}, \ref{inputs:#2})}
+\newcommand{\inputData}[1]{(inputs: \ref{inputs:#1})}
+\newcommand{\inputDataII}[2]{(inputs: \ref{inputs:#1}, \ref{inputs:#2})}
+\newcommand{\outputData}[1]{(calibProducts: \ref{calibProducts:#1})}
+\newcommand{\outputDataII}[2]{(calibProducts: \ref{calibProducts:#1}, \ref{calibProducts:#2})}
+\newcommand{\inputOutputData}[1]{(inputs: \ref{inputs:#1}; calibProducts: \ref{calibProducts:#1})}
+\newcommand{\calypsoData}[1]{(calypsoProducts: \ref{calypso:#1})}
+
+\newcommand{\cameraTeam}{\textbf{Camera Team deliverable}\xspace}
 %
 \newcommand{\TBD}{\textit{T.B.D.}\xspace}
 \newcommand{\XXX}[1]{\textbf{XXX #1}\xspace}
 
-\newcommand{\addLabel}[1]{\P \label{#1}\ref{#1}}
-\newcommand{\addMyLabel}[2]{\P \myLabel{#1}{#2}\ref{#1}}
 \makeatletter
 \newcommand{\myLabel}[2]{\def\@currentlabel{#2}\label{#1}}
 \makeatother
 
+\newcommand{\appRef}[1]{App. \ref{app:#1}}
 \newcommand{\secRef}[1]{Sec. \ref{sec:#1}}
 
 \bibliography{biblio,LSSTbiblio}
@@ -56,23 +55,41 @@
 
 This document outlines the software required to produce calibration products, and then apply them.
 
-Appendix \ref{sec:calibrationDatasets} lists the available inputs to the calibration products, and datasets
-listed therein are referenced as \eg \inputData{monoFlat}.
+Appendix \ref{sec:calibrationInputDatasets} lists the available inputs to the calibration products pipelines,
+and datasets listed therein are referenced as \eg \inputData{monoFlat}.  The outputs are listed in
+\secRef{calibrationOutputDatasets}, and the datasets listed \textit{therein} are referenced as
+\eg \outputData{bias}.
 
 \section{Calibration Products}
 
 \subsection{Biases}
 
 Bias frames will be produced by taking the median of several-to-many bias exposures.
-\inputData{bias}.
+\inputOutputData{bias}.
 
-The individual frames will be overscan-corrected and then combined using standard LSST image stacking code.
-With the LSST 2s readout, we do not expect to need to remove cosmic rays explicitly, but a robust stacking algorithm will be required.  If the readout noise in any channels is too low (relative to the gain) to properly
-sample the noise distribution, a simple fix is to add sets of $n$ (\eg 3) bias exposures before creating
-the stacked image.
+The individual frames will be overscan-corrected and trimmed, and then combined using standard LSST image
+stacking code.  With the LSST 2s readout, we do not expect to need to remove cosmic rays explicitly, but a
+robust stacking algorithm will be required.  If the readout noise in any channels is too low (relative to the
+gain) to properly sample the noise distribution, a simple fix is to add sets of $n$ (\eg 3) bias exposures
+before creating the stacked image.
 
-\subsection{Linearity}
+\subsection{Amplifier Gains}
+\label{sec:gains}
+
+We expect the camera team to deliver accurate gain values for every amplifier.  Because of
+correlations induced by brighter-fatter effects, these will have to be measured in a way that is independent
+of intensity (modulo the effects of non-linearity in the amplifiers; \secRef{linearity}), for example
+by using $^{55}$Fe. \inputData{gain}.
+
+We will be able to monitor the relative gain within a given CCD by demanding that the flat fields be
+continuous across amplifier boundaries;  this is not possible across devices.  We may be able to use
+cosmic ray muons to monitor gain drifts, but it is not yet clear what accuracy will be achievable.
+
+\subsection{Non-linearity}
 \label{sec:linearity}
+
+We expect the camera team to deliver non-linearity curves for every amplifier
+\inputOutputData{linearityCurve}, and also the level above which these non-linearity curves may be unreliable.
 
 We care about linearity for a number of purposes:
 \begin{itemize}
@@ -81,8 +98,6 @@ We care about linearity for a number of purposes:
 \item Matching background levels for different readout amplifiers.
 \end{itemize}
 
-We expect the camera team to deliver linearity curves \inputData{linearityCurve}.
-
 We will be able to check these values, and their stability, in at least three ways:
 \begin{itemize}
 \item Looking at the flux of objects as a function of the background level.
@@ -90,11 +105,31 @@ We will be able to check these values, and their stability, in at least three wa
 \item Looking at the offsets between amplifier segments in flat fields taken at different light levels.
 \end{itemize}
 
+\subsection{Defect Maps}
+
+We expect the camera team to deliver a list of:
+\begin{itemize}
+\item Bad pixels (\ie ones that are unusable)
+\item Suspect pixels (\ie ones that should raise a flag during processing
+\end{itemize}
+The latter list may be empty.  \inputOutputData{defectList}
+
+This list will be augmented as new bad pixels appear or are recognised.
+
+\subsection{Saturation Levels}
+
+We expect the camera team to provide, for each amplifier, the lowest charge level at which charge moves from
+one pixel to a neighbour.  If necessary, they will also provide the level at which the serial register
+saturates (\ie if the serial saturates at a lower level than the parallels).
+\inputOutputData{saturationLevel}.
+
+These values will be modified, if necessary, based on analysis of imaging data.
+
 \subsection{Crosstalk}
 \label{sec:crosstalk}
 
 We expect the camera team to deliver a crosstalk matrix coupling every amplifier to every other amplifier
-\inputData{crosstalk}; we hope and expect that most of these matrix elements will be 0.
+\inputOutputData{crosstalk}; we hope and expect that most of these matrix elements will be 0.
 
 We can can also check the cross talk coefficients using CBP data \inputData{CBP:crosstalk}, saturated
 stars' bleed trails, or cosmic rays.  The latter two measurements are likely to only be useful for
@@ -104,7 +139,7 @@ measurements \textit{ab initio}.
 \subsection{Darks}
 
 Dark frames will be produced by taking the median of several-to-many dark exposures, each of length c. 300s;
-\inputData{dark}.
+\inputOutputData{dark}.
 
 The individual frames will be run through standard ISR processing (including cosmic ray removal) before
 being combined;  the combination may be done using standard LSST image stacking code.  If we disable the
@@ -149,7 +184,7 @@ drift in the filter curves (see \secRef{filterTransmission}).
 \subsubsection{Flats for Background Estimation}
 \label{sec:backgroundFlats}
 
-The calibration system will produce a low-resolution spectrum of the night sky \inputData{nightSkySpectrum},
+The calibration system will produce a low-resolution spectrum of the night sky \calypsoData{nightSkySpectrum},
 and we will use this to synthesise a flat field image for the sky's SED from the monochromatic dome flats
 \inputData{monoFlat}.
 
@@ -182,8 +217,9 @@ We will then use standard LSST aperture photometry to measure the number of coun
   varying plate scale) so we need to solve for their relative intensities; we can do this by moving the spots
   around the camera, \inputData{CBP:spot}, in a manner similar to the standard processing of star flats.
 
-  We can then correct the monochromatic spots \inputData{CBP:mono} and arrive at the relative QE at a set of
-  points in the camera, as a function of wavelength, in the absence of a filter.
+  We can then correct the monochromatic spots \inputData{CBP:mono} for the gains \inputData{gain}, and arrive
+  at the relative QE at a set of points in the camera, as a function of wavelength, in the absence of a
+  filter.
 
 \item Estimation of the Photometric Flats for All Pixels
 
@@ -226,8 +262,25 @@ We will then use standard LSST aperture photometry to measure the number of coun
   We do not need this information to calibrate LSST, but it will provide a valuable cross-check, and
   will inform the camera and telescope teams about the state of the optical elements.
 
-\end{itemize}
+\subsubsection{Outputs}
+  
+The corrected monochromatic flats (appropriate for the background and photometry) will be the inputs to
+pipeline processing; \outputDataII{monoFlat}{monoPhotoFlat}.
 
+We will also employ a photometric flat appropriate to a flat-spectrum source (or other well-defined SED)
+\outputData{monoPhotoFlat} absorbed by a standard atmosphere.  This is not strictly-speaking an output --- it
+could be constructed on the fly --- but it is more efficient to construct it here.
+\outputData{standardPhotoFlat}.  \Nb the use of a standard SED/atmosphere here is intended to make the
+corrections for objects' real SEDs/atmospheric absorption smaller and with smoother spatial structure.
+Its use is not intrinsic to the final photometry, and if it turns out not to be helpful it may be
+dispensed with.
+
+If, as we expect, the error due to using this standard spectrum flat is slowly varying and only dependent on a
+low-resolution version of the SED (\eg a resolution sufficient to capture the photometric effects of an Ia
+SNe), we will prepare a low-resolution data cube to capture the essence of \outputData{monoPhotoFlat};
+\outputData{monoPhotoFlatLowRes}.
+
+\end{itemize}
 
 \subsection{Fringe Correction}
 \label{sec:fringe}
@@ -260,7 +313,7 @@ spatial variation of the sky and we are planning to use a different approach.
 As described in \secRef{backgroundFlats} we will synthesise flat fields that match the night sky's SED.  In a
 little more detail relevant to fringing, the calibration system will produce a spectrum of the night sky with
 resolution \c 200, and this is sufficient to predict the distribution of night sky line intensities
-\inputData{nightSkySpectrum}.  We will then use this low-resolution spectrum to construct a flat field from
+\calypsoData{nightSkySpectrum}.  We will then use this low-resolution spectrum to construct a flat field from
 the monochromatic dome flats \inputData{monoFlat} that flatten the night sky spectrum, removing small-scale
 structure due to the sky emission.
 
@@ -271,6 +324,9 @@ we will have many realisations of the spectrum at different points in the sky, a
 these to confirm that the effective fringe image is spatially uniform;  if it transpires that this is
 not the case we will be able to construct a small number of flats that capture the variation, and
 use them to remove the variation in the spatial structure.
+
+If this sky-flattening approach works we will not need any special fringe outputs;  we should
+allow for the use of some variant of fringe frames as a backup \outputData{fringeFrames}.
 
 \subsection{Filter Transmission Curves}
 \label{sec:filterTransmission}
@@ -318,7 +374,8 @@ makes the surprising claim that they can find $\xib$ by looking for a solution c
 If such approaches fail, it is probably possible to measure $\xib$ by using images of 1-D sinusoids projected
 onto the CCD, either by the camera team or on the mountain using the CBP.
 
-See \secRef{correctingPixelSizes} for a discussion of how we will use $\xib$ once it is known.
+See \secRef{correctingPixelSizes} for a discussion of how we will use $\xib$ once it is known;
+\outputData{pixelSizeMap}.
 
 \subsection{Brighter-Fatter}
 \label{sec:brighterFatter}
@@ -326,7 +383,7 @@ See \secRef{correctingPixelSizes} for a discussion of how we will use $\xib$ onc
 The measurements needed to characterise Brighter-Fatter effects are not yet clear.  Current state of the art
 is to use pixel-to-pixel correlations in flat fields taken at different flux levels \inputData{broadFlat}.  It
 is possible that we'll need other measurements, possibly generated by projecting masks onto the camera using
-the CBP.
+the CBP;  \outputData{brighterFatterCoeffs}.
 
 \subsection{Atmospheric Absorption}
 
@@ -349,34 +406,45 @@ use this series to fill in the cases where the calibration telescope fails to ke
 \Nb It is probably not necessary to know the true spectrum of the star, as we only need to reduce the
 atmospheric absorption to standard conditions using the ensemble of all star spectrophotometric data.
 
+\calypsoData{atmosphericAbsorption}
+
 \section{Applying Calibration Products}
 
 \subsection{Biases}
 
 We will fit the overscan using a suitable function in the row direction (\eg a spline), taking
-due account of cosmic ray hits during readout and bleeding into the overclock as saturated
+due account of cosmic ray hits during readout and bleeding into the overscan as saturated
 stars are clocked away from the amplifier splits.
 
-We will then subtract the bias frames.
+We will then subtract the bias frames \outputData{bias}.
 
 \subsection{Linearity}
 
-After bias subtraction we will correct for non-linearity.  \Nb this assumes that the sole
+After bias subtraction we will correct for non-linearity \outputData{linearityCurve}, marking
+regions where the linearity is considered unreliable as \texttt{SUSPECT}.
+\Nb this assumes that the sole
 source of non-linearity is in the readout amplifier.  If there is significant non-linearity
 introduced further down the signal chain -- which seems unlikely -- we may need to extend
 out non-linearity corrections.
 
 \subsection{Crosstalk}
 
-We next correct for crosstalk, including intra- and inter-chip corrections if necessary.
+We next correct for crosstalk, including intra- and inter-chip corrections if necessary
+\outputData{crosstalk}.
 
 \subsection{Darks}
 
-After cross-talk correction we will subtract scaled dark frames.
+After cross-talk correction we will subtract scaled dark frames \outputData{dark}.
+
+\subsection{Bad Pixels and Saturation}
+
+We next interpolate over bad pixels and bleed trails \outputDataII{defectList}{saturationLevel}.
 
 \subsection{Flat Fields}
+\label{sec:applySkyFlat}
 
-We next flat field the data, using the flat constructed using the sky SED.
+We next flat field the data, using the flat constructed using the current night-sky SED
+\outputData{monoFlat}, \calypsoData{nightSkySpectrum}.  
 
 Note that this
 flat should correct for fringing, so there is no need for any fringe subtraction.   As discussed
@@ -387,9 +455,9 @@ subtraction.
 \subsection{Pixel Size Effects}
 \label{sec:correctingPixelSizes}
 
-Given the field $\xib$ we may redistribute flux between pixels (it's easier to think about this
-as a correction in first x then y).  Linear estimation of the flux density at the pixel boundary
-is probably sufficient, although higher order weights based on a nominal PSF might be better.
+Given the field $\xib$ \outputData{pixelSizeMap} we may redistribute flux between pixels (it's easier to think
+about this as a correction in first x then y).  Linear estimation of the flux density at the pixel boundary is
+probably sufficient, although higher order weights based on a nominal PSF might be better.
 
 This flux redistribution causes a small correlation between the pixels which we need to track
 with some level of accuracy.
@@ -399,21 +467,33 @@ two corrections leaves the uniform unstructured nature of the background undistu
 
 \subsection{Brighter-Fatter}
 
-We then redistribute flux between pixels to correct for the brighter-fatter effect.  Note that
-this does \textit{not} cause correlations between pixels, rather it removes the correlations
-induced by the electric field shifts that resulted in brighter-fatter in the first place.
+We then redistribute flux between pixels to correct for the brighter-fatter effect
+\outputData{brighterFatterCoeffs}.  Note that this does \textit{not} cause correlations between pixels, rather
+it removes the correlations induced by the electric field shifts that resulted in brighter-fatter in the first
+place.
 
 \subsection{Background Subtraction}
 
 We now proceed with normal image processing activities, leading to photometric and astrometrically
 calibrated images.  At some point (\eg after background matching) we subtract the background.
 
+\subsection{Photometric Flattening}
+
+We can now correct the pixels for the effects of scattered light, and for the mismatch between the
+colour of the sky and that of a typical astronomical object.  This is not strictly necessary --- there
+are other sets of operations that result in the same final results --- but this proposal is simple
+and probably wise.
+
+Multiply by the sky flat, as computed in \secRef{applySkyFlat}, then divide by the canonical
+photometric flat \outputData{standardPhotoFlat}.
+
 \subsection{Final Photometry}
+\label{sec:finalPhotometry}
 
 For each observation of each object we know:
 \begin{itemize}
-\item The QE of the device as a function of wavelength at the position of the object;
-  including the effects of the filter
+\item The QE of the device as a function of wavelength at the position of the object,
+  including the effects of the filter;
 \item The QE of the device as a function of wavelength assumed when flat fielding;
 \item The atmospheric transmission;
 \item The object's colour
@@ -422,78 +502,156 @@ For each observation of each object we know:
 this is not a fundamental problem;  however the details of how we arrange the computation efficiently
 requires thought).
 
-We then (at least logically -- this may not describe in detail the actual operations carried out):
+The `proper' way to measure an object's flux is given in \appRef{properFluxMeasurement}.  We will assume
+here that the flat fields are slowly varying (\ie constant on the scale of an object, which means
+on the scale of a PSF for objects which require exquisite photometry).
+
+We will:
 \begin{itemize}
-\item Measure the object's flux.
-\item Undo the flat fielding, assumed constant over the scale of the object.
-\item Look up the the canonical SED corresponding to the object's colour (\ie the mean SED for objects with
-  that colour; this may not The object's colour implies a always be correct, although most degeneracies in
-  photo-z estimation are due to similar observed SEDs from objects with different intrinsic SEDs).
-\item Correct this SED for the atmospheric absorption
-\item Calculate the proper flat field for this SED, assumed constant over the scale of the object.
-\item Correct the flux for the incorrect flat fielding we applied.
-\item Record the raw and corrected flux, allowing us to repeat this calculation for any user-provided SED.
+\item Carry out appropriate pixel operations to estimate the number of counts in the object.
+\end{itemize}
+The rest of the operations can be carried out at the catalogue level:
+\begin{itemize}
+\item Look up the the canonical SED corresponding to the object's colour
+\item Correct this SED for atmospheric absorption
+\item Calculate the proper flat field for this SED at the centre of the object (a scalar, $C_{obj}$)
+\item Lookup the standard-SED flat field at the centre of the object (another scalar, $C_{standard}$)
+\item Correct the counts by $C_{obj}/C_{standard}$
 \end{itemize}
 
-Note that
+In practice
+we expect that  $C_{obj}$ and $C_{standard}$ will be slowly-varying functions of position, and not
+require very high spectral resolution;  we will therefore use \outputData{monoPhotoFlatLowRes}.  \Nb
+this will also be needed by anyone wishing to redo the photometry for \eg SNe Ia science.
 
 %------------------------------------------------------------------------------
 
 \appendix
 
-\section{Inputs to LSST's Calibration  Pipelines}
-\label{sec:calibrationDatasets}
+\section{Inputs to LSST's Calibration Products Pipelines}
+\label{sec:calibrationInputDatasets}
 
 We will have the following datasets available:
-\begin{enumerate}
-   \item\addLabel{inputs:bias} Sets of bias frames.
-   \item\addLabel{inputs:dark} Sets of 300s dark frames.
-   \item\addLabel{inputs:broadFlat} Sets of flats taken through the standard LSST filters.  We will
+\begin{enumerate}[label=\P\arabic*,itemsep=5pt]
+  \newcommand{\addMyLabel}[2]{\myLabel{#1}{\P#2}\P#2}
+   \item\label{inputs:bias} Sets of bias frames.
+   \item\label{inputs:gain} Gain values for all amplifiers;  note that these are required to high
+     accuracy (0.1\%), as they are used while determining the photometric flats. \cameraTeam.
+   \item\label{inputs:linearityCurve}  The linearity curve for every amplifier. \cameraTeam.
+   \item\label{inputs:dark} Sets of 300s dark frames.
+   \item\label{inputs:crosstalk} The crosstalk matrix for every pair of amplifiers in the camera.
+     \cameraTeam.
+   \item\label{inputs:defectList} A list of all bad pixels in each CCD. \cameraTeam.
+   \item\label{inputs:saturationLevel} The level (in electrons), for each amplifier, at which charge bleeds
+     to a neighbouring pixel. \cameraTeam.
+   \item\label{inputs:broadFlat} Sets of flats taken through the standard LSST filters.  We will
      need flats taken at a number of flux levels to measure brighter-fatter and check linearity.
-   \item\addLabel{inputs:monoFlat} Sets of `monochromatic' (\c 1nm) flat-field screen images taken
+   \item\label{inputs:monoFlat} Sets of `monochromatic' (\c 1nm) flat-field screen images taken
      without the filter in the beam.
-   \item\addLabel{inputs:nightSkySpectrum} Spectra of the night sky near the Calypso boresight, with $R \sim
-  200$.\footnote{It is not entirely clear whether these will be taken on the Calypso or 8.4m boresight.}
-   \item\addLabel{inputs:CBP} Sets of \textit{C}ollimated \textit{B}eam \textit{P}rojector images.
+   \item\label{inputs:CBP} Sets of \textit{C}ollimated \textit{B}eam \textit{P}rojector images.
      The proposed resolutions and steps in these datasets are preliminary.
      % NOTE that the sub-CBP items have their a, b, c, ... labels set by hand, so caveat emptor
      % if you add more or change the order.  Yes, I'm lazy.
      \begin{itemize}
-     \item\addMyLabel{inputs:CBP:mono}{\arabic{enumi}a} Sets of CBP images scanned in wavelength at 1nm resolution every
+     \item[]\addMyLabel{inputs:CBP:mono}{\arabic{enumi}a} Sets of CBP images scanned in wavelength at 1nm resolution every
        1nm for a fixed set of spot positions on the camera, and for fixed footprint on M1.  No filter
        should be in the beam.
-     \item\addMyLabel{inputs:CBP:spot}{\arabic{enumi}b} Sets of CBP images scanned in wavelength at 20nm resolution every
+     \item[]\addMyLabel{inputs:CBP:spot}{\arabic{enumi}b} Sets of CBP images scanned in wavelength at 20nm resolution every
        100nm, while rotating the CBP about a pupil to move the spot pattern around the camera for a
        fixed footprint on M1.  No filter should be in the beam.
-     \item\addMyLabel{inputs:CBP:M1}{\arabic{enumi}c} Sets of CBP images scanned in wavelength at 20nm resolution every
+     \item[]\addMyLabel{inputs:CBP:M1}{\arabic{enumi}c} Sets of CBP images scanned in wavelength at 20nm resolution every
        100nm for a fixed set of spot positions on the camera, and for a number of footprints on M1; the
        minimum number of footprints is \c 6 for a 30cm CBP, but in reality we will explore more pointings to
        test azimuthal symmetry. No filter should be in the beam.
-     \item\addMyLabel{inputs:CBP:filter}{\arabic{enumi}d} Sets of CBP images scanned in wavelength at 1nm resolution every
+     \item[]\addMyLabel{inputs:CBP:filter}{\arabic{enumi}d} Sets of CBP images scanned in wavelength at 1nm resolution every
        1nm for a fixed set of spot positions on the camera, and for fixed footprint on M1.  Repeated for
        every filter. \Nb the wavelength range for each scan need only cover the range for which the filter
        transmits appreciable light.
-     \item\addMyLabel{inputs:CBP:leak}{\arabic{enumi}e} Sets of CBP images scanned in wavelength at 20nm
+     \item[]\addMyLabel{inputs:CBP:leak}{\arabic{enumi}e} Sets of CBP images scanned in wavelength at 20nm
        resolution every 20nm for a fixed set of spot positions on the camera, and for fixed footprint on M1.
        Repeated for every filter.
-     \item\addMyLabel{inputs:CBP:crosstalk}{\arabic{enumi}f} Sets of CBP images taken with a suitable
+     \item[]\addMyLabel{inputs:CBP:crosstalk}{\arabic{enumi}f} Sets of CBP images taken with a suitable
        designed sparse mask to allow us to identify and measure all crosstalk images.  The simplest
        sparse mask would have only a single spot, used to illuminate each amplifier in the camera in
        turn (but less sparse solutions are probably also possible).  The wavelengths used are unimportant,
        and there are no constraints on beam footprints on M1 or filter choice.
      \end{itemize}
-   \item\addLabel{inputs:filterTransmission} Transmission curves for all the filters as a function of position.
-   \item\addLabel{inputs:linearityCurve}  The linearity curve for every amplifier.
-   \item\addLabel{inputs:crosstalk}  The crosstalk matrix for every pair of amplifiers in the camera.
-   \item\addLabel{inputs:starSpectrum}  Spectrophotometrically-calibrated spectra for stars in
+   \item\label{inputs:filterTransmission} Transmission curves for all the filters as a function of position.
+      \cameraTeam.
+   \item\label{inputs:starSpectrum}  Spectrophotometrically-calibrated spectra for stars in
      the field of view of almost all visits.
-   \item\addLabel{inputs:standardStarSpectrum} Known spectra for bright stars in the field of view of all
+   \item\label{inputs:standardStarSpectrum} Known spectra for bright stars in the field of view of all
      visits.
-   \item\addLabel{inputs:atmosphericData}  Externally measured parameters of the atmosphere, for
+   \item\label{inputs:atmosphericData}  Externally measured parameters of the atmosphere, for
      example barometric pressure and ozone.
-   \item\addLabel{photometricStandards}  Photometric standards, of a range of colours.  GAIA is a likely
+   \item\label{inputs:photometricStandards}  Photometric standards, of a range of colours.  GAIA is a likely
      source for these data.
 \end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Outputs from LSST's Calibration Product Pipelines/Inputs to Alert/DRP Pipelines}
+\label{sec:calibrationOutputDatasets}
+
+The Calibration Products Pipeline will generate the following datasets:
+\begin{enumerate}[label=\textbf{\S}\arabic*,itemsep=5pt]
+   \item\label{calibProducts:bias} Trimmed, overscan subtracted, bias frame for each CCD.
+   \item\label{calibProducts:linearityCurve} Linearity curves;
+     identical to \inputData{linearityCurve}, unless updated during operations.
+   \item\label{calibProducts:defectList} A list of all bad pixels in each CCD;
+     identical to \inputData{defectList}, unless updated during operations.     
+   \item\label{calibProducts:saturationLevel} The level (in electrons), for each amplifier, at which charge
+     bleeds to a neighbouring pixel;
+     identical to \inputData{saturationLevel}, unless updated during operations.     
+   \item\label{calibProducts:crosstalk}  The crosstalk matrix for every pair of amplifiers in the camera;
+     identical to \inputData{crosstalk}, unless updated during operations.
+   \item\label{calibProducts:dark} Trimmed, overscan subtracted, dark frame scaled to 1 second for each CCD.
+   \item\label{calibProducts:monoFlat} Sets of `monochromatic' (\c 1nm) trimmed, overscan subtracted,
+     flat-field images for each filter.  These flats will \textit{include} ghost and scattered light.
+   \item\label{calibProducts:monoPhotoFlat} Sets of `monochromatic' (\c 1nm) trimmed, overscan subtracted,
+     flat-field images for each filter.  These flats will \textit{exclude} ghost and scattered light.
+   \item\label{calibProducts:standardPhotoFlat} The linear combination of \outputData{monoPhotoFlat}
+     data weighted by a flat-spectrum source (or other defined standard SED), absorbed by a standard
+     atmosphere.
+   \item\label{calibProducts:monoPhotoFlatLowRes} A low-resolution (in both space and wavelength)
+     version of \outputData{monoPhotoFlat}.
+   \item\label{calibProducts:pixelSizeMap}  A map of the pixel-size distortions.  At worse, this will be
+     a $n_{\mbox{width}}\times n_{\mbox{height}}\times 2$ datacube of floats.
+   \item\label{calibProducts:brighterFatterCoeffs}  Coefficients needed to model the brighter-fatter effects.
+     We hope that these are a small number of floats per CCD, but this is not yet entirely clear.
+   \item\label{calibProducts:fringeFrames}  \textit{Some variety of fringe frames.  We hope that we will not
+     need these, but should plan for their existence as a backup.}
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Calibration Telescope Inputs to Alert/DRP Pipelines}
+\label{sec:calibrationTelescopeDatasets}
+
+\begin{enumerate}[label=$\heartsuit$\arabic*,itemsep=5pt]
+   \item\label{calypso:atmosphericAbsorption} The atmospheric absorption as a function of wavelength (at
+     moderate spectral resolution) for almost each visit.
+   \item\label{calypso:nightSkySpectrum} Spectrum of the night sky near the Calypso boresight, with $R
+     \sim 200$.\footnote{It is not entirely clear whether these will be taken on the Calypso or 8.4m
+       boresight.}
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Flux Measurement}
+\label{app:properFluxMeasurement}
+
+To measure the object's flux we should:
+\begin{itemize}
+\item Look up the the canonical SED corresponding to the object's colour
+\item Correct this SED for atmospheric absorption
+\item Calculate the proper flat field for this SED
+\item Undo the flat fielding (which assumed a standard SED and atmosphere)
+\item Apply the proper flat field for this SED
+\item Carry out appropriate pixel operations to estimate the number of counts in the object.
+\end{itemize}
+
+We describe a simplification of these operations in \secRef{finalPhotometry}.
 
 %------------------------------------------------------------------------------
 
