@@ -55,12 +55,12 @@
 
 This document outlines the software required to produce calibration products, and then apply them.
 
-Appendix \ref{sec:calibrationInputDatasets} lists the available inputs to the calibration products pipelines,
-and datasets listed therein are referenced as \eg \inputData{monoFlat}.  The outputs are listed in
-\secRef{calibrationOutputDatasets}, and the datasets listed \textit{therein} are referenced as
-\eg \outputData{bias}.
+Appendix \ref{sec:calibrationInputDatasets} and \ref{sec:calibrationTelescopeDatasets} list the data available
+to the calibration products pipelines, and datasets listed therein are referenced as \eg \inputData{monoFlat}
+or \calypsoData{atmosphericAbsorption}.  The outputs are listed in \secRef{calibrationOutputDatasets}, and the
+datasets listed \textit{therein} are referenced as \eg \outputData{bias}.
 
-\section{Calibration Products}
+\section{Preparing Calibration Products}
 
 \subsection{Biases}
 
@@ -79,7 +79,7 @@ before creating the stacked image.
 We expect the camera team to deliver accurate gain values for every amplifier.  Because of
 correlations induced by brighter-fatter effects, these will have to be measured in a way that is independent
 of intensity (modulo the effects of non-linearity in the amplifiers; \secRef{linearity}), for example
-by using $^{55}$Fe. \inputData{gain}.
+by using $^{55}$Fe or measuring the variance of binned flats. \inputData{gain}.
 
 We will be able to monitor the relative gain within a given CCD by demanding that the flat fields be
 continuous across amplifier boundaries;  this is not possible across devices.  We may be able to use
@@ -160,10 +160,10 @@ We plan to apply corrections to the data for the static part of the pixel size n
 
 \subsubsection{Broadband and Monochromatic Flats}
 
-We will take both broadband \inputData{broadFlat} and `monochromatic' \inputData{monoFlat} flat fields.
-As discussed below, we will use the latter to estimate the correct flat field for light with the SED of the
-night sky, and the former to correct our data for the effects of dust on the filters and other effects that
-change on a short time scale.
+We will take both broadband \inputData{broadFlat} and `monochromatic' \inputData{monoFlat} flat fields.  As
+discussed below, we will use the latter to estimate the correct flat field for light with any desired SED
+(including that of the night sky), and the former to correct our data for the effects of dust on the filters
+and other effects that change on a short time scale.
 
 \subsubsection{Contamination of Filters and Other Optical Elements}
 
@@ -171,14 +171,14 @@ Dust motes appearing on filters have an affect upon the system flat fields.  Thi
 a serious effect for LSST as the beam at the filter has a diameter of \c 10cm (effective diameter \c 8cm)
 so only an unexpectedly large contaminant will have a measureable effect.
 
-However, we expect to take broadband flats \inputData{broadFlat} every time we put a filter into the filter
+However, we shall take broadband flats \inputData{broadFlat} every time we put a filter into the filter
 changer, and probably as a routine part of afternoon checkout.  We will synthesise a broad-band flat from the
 monochromatic flats \inputData{monoFlat} and filter transmissions \inputData{filterTransmission}, and divide the
 measured by the synthetic flats; by taking contaminants to be gray (\eg opaque, but with a small covering
 factor) we will use the ratio to correct the monochromatic flats for any changes since they were taken.
 
-Another approach would be to use a broadband flat taken at the same time as the monochromatic flats
-as the reference image.  In reality we will do both;  any discrepancy will be a sign of potential
+Another approach is to use a broadband flat taken at the same time as the monochromatic flats
+as the reference image.  We will do both;  any discrepancy will be a sign of potential
 drift in the filter curves (see \secRef{filterTransmission}).
 
 \subsubsection{Flats for Background Estimation}
@@ -238,7 +238,7 @@ We will then use standard LSST aperture photometry to measure the number of coun
   \item Fit a surface through the CBP values (either per-CCD or for the whole camera); a spline would
     be a reasonable choice (either the product of two 1-D splines, or a thin plate spline.  I would
     start with the former as they are easier to understand).
-  \item Divide the dome flat by this curve, giving an estimate of the illumination and chip-to-chip
+  \item Divide the dome flat by this surface, giving an estimate of the illumination and chip-to-chip
     correction
   \item Fit a curve to this correction, and correct the dome screen.  This should be close to the
     values derived from the CBP data (and can preserve discontinuities in the QE across chips which
@@ -368,7 +368,7 @@ a function of distance from the edge of the sensor) then high-signal-to-noise fl
 determine the distortions \inputData{broadFlat}.
 
 The small-scale variations are harder.  If we are willing to make the arbitrary assumption that $\xib$ is the
-gradient of a scalar we can solve for it from flat field data.  Aaron Rudman's group, working on DECam data,
+gradient of a scalar we can solve for it from flat field data.  Aaron Roodman's group, working on DECam data,
 makes the surprising claim that they can find $\xib$ by looking for a solution close to $\xib = \zerob$.
 
 If such approaches fail, it is probably possible to measure $\xib$ by using images of 1-D sinusoids projected
@@ -405,7 +405,6 @@ use this series to fill in the cases where the calibration telescope fails to ke
 
 \Nb It is probably not necessary to know the true spectrum of the star, as we only need to reduce the
 atmospheric absorption to standard conditions using the ensemble of all star spectrophotometric data.
-
 \calypsoData{atmosphericAbsorption}
 
 \section{Applying Calibration Products}
@@ -528,7 +527,7 @@ this will also be needed by anyone wishing to redo the photometry for \eg SNe Ia
 
 \appendix
 
-\section{Inputs to LSST's Calibration Products Pipelines}
+\section{Calibration Data input to Calibration Products Pipelines}
 \label{sec:calibrationInputDatasets}
 
 We will have the following datasets available:
@@ -590,6 +589,22 @@ We will have the following datasets available:
 
 %------------------------------------------------------------------------------
 
+\section{Calibration Telescope Data Input Calibration Products Pipelines}
+\label{sec:calibrationTelescopeDatasets}
+
+\begin{enumerate}[label=$\heartsuit$\arabic*,itemsep=5pt]
+   \item\label{calypso:atmosphericAbsorption} The atmospheric absorption as a function of wavelength (at
+     moderate spectral resolution) for almost each visit.
+   \item\label{calypso:nightSkySpectrum} Spectrum of the night sky near the Calypso boresight, with $R
+     \sim 200$.\footnote{It is not entirely clear whether these will be taken on the Calypso or 8.4m
+       boresight.}
+\end{enumerate}
+
+\Nb these are clearly not raw data, but will need to be extracted from spectrographic exposures.
+\XXX{Add a description of those pipelines, and of the input data that they require.}
+
+%------------------------------------------------------------------------------
+
 \section{Outputs from LSST's Calibration Product Pipelines/Inputs to Alert/DRP Pipelines}
 \label{sec:calibrationOutputDatasets}
 
@@ -621,19 +636,6 @@ The Calibration Products Pipeline will generate the following datasets:
      We hope that these are a small number of floats per CCD, but this is not yet entirely clear.
    \item\label{calibProducts:fringeFrames}  \textit{Some variety of fringe frames.  We hope that we will not
      need these, but should plan for their existence as a backup.}
-\end{enumerate}
-
-%------------------------------------------------------------------------------
-
-\section{Calibration Telescope Inputs to Alert/DRP Pipelines}
-\label{sec:calibrationTelescopeDatasets}
-
-\begin{enumerate}[label=$\heartsuit$\arabic*,itemsep=5pt]
-   \item\label{calypso:atmosphericAbsorption} The atmospheric absorption as a function of wavelength (at
-     moderate spectral resolution) for almost each visit.
-   \item\label{calypso:nightSkySpectrum} Spectrum of the night sky near the Calypso boresight, with $R
-     \sim 200$.\footnote{It is not entirely clear whether these will be taken on the Calypso or 8.4m
-       boresight.}
 \end{enumerate}
 
 %------------------------------------------------------------------------------
