@@ -639,6 +639,8 @@ properties, and in $\qe^{qe}$ to allow for different CCDs in the focal plane hav
 If you think that the different platescale for object- and sky-coloured objects have a significant effect, you
 may add the ratio $\qe_{sky}^{tel}/\qe_{obj}^{tel}$ but it seems unlikely that this will be necessary.
 
+\XXX{Note that we can correct for a different SED without keeping the $C_{raw}^r$}
+
 Note that the SED doesn't enter into the pixel-dependent part, $C_{raw}^r$, making it relatively simple to
 adopt a different SED and recalculate $C_{std}$ if we know the $\cSED^r$.  We don't need to save $\cSED^r$
 for every object as we only need the SED, and that is known given $(\{C_b\}, \theta)$.  This simplification
